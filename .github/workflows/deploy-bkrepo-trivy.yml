@@ -1,0 +1,12 @@
+name: Create and publish bkrepo-trivy image
+
+on:
+  push:
+    tags:
+      - "trivy/v*"
+
+jobs:
+  build-and-push-image:
+    uses: ./.github/workflows/deploy-golang-analysis-tool.yml
+    with:
+      tool_name: trivy
