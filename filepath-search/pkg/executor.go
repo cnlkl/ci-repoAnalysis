@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"compress/gzip"
 	"errors"
-	"fmt"
 	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
@@ -68,16 +67,15 @@ func scan(filepath string, regex string) ([]object.SecurityResult, error) {
 
 		if err := walk(l, func(filePath string, info os.FileInfo, reader io.Reader) error {
 			if reg.MatchString(filePath) {
-				vulId := "fp-" + filePath
 				securityResults = append(securityResults, object.SecurityResult{
-					VulId:       vulId,
-					CveId:       vulId,
-					VulName:     vulId,
+					VulId:       "filepath",
+					CveId:       "filepath",
+					VulName:     "filepath",
 					Path:        filePath,
 					PkgName:     filePath,
 					PkgVersions: []string{},
 					References:  []string{},
-					Des:         fmt.Sprintf("File path [%s] matches the regex [%s]", filePath, reg),
+					Des:         "",
 					Severity:    "CRITICAL",
 				})
 			}
