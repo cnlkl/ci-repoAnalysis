@@ -33,10 +33,10 @@ jobs:
 
       - name: Extract tag
         run: |
-          TAG_NAME=${GITHUB_REF##/}
+          TAG_NAME=${GITHUB_REF##*/}
           echo "Extracted Tag Name: $TAG_NAME"
         env:
-          SCANCODE_TAG: ${{ env.TAG_NAME }}
+          SCANCODE_TAG: $TAG_NAME
 
       - name: Checkout repository
         uses: actions/checkout@v3
