@@ -31,11 +31,18 @@ jobs:
           tags: |
             type=match,pattern=scancode-toolkit/v(\d+\.\d+\.\d+),group=1
 
+      - name: Extract tag
+        run: |
+          TAG_NAME=${GITHUB_REF##/}
+          echo "Extracted Tag Name: TAG_NAME"
+        env:
+          SCANCODE_TAG: ${{ env.TAG_NAME }}
+
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           repository: nexB/scancode-toolkit
-          ref: v${{ steps.meta.outputs.tags }}
+          ref: ${{ env.SCANCODE_TAG }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
