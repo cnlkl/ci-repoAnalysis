@@ -6,9 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
-	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
-	"github.com/hashicorp/go-retryablehttp"
 	"io"
 	"net/http"
 	"net/url"
@@ -16,6 +13,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/object"
+	"github.com/TencentBlueKing/ci-repoAnalysis/analysis-tool-sdk-golang/util"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 // analystTemporaryPrefix 制品分析服务接口前缀
@@ -62,6 +63,7 @@ func GetClient(args *object.Arguments) *BkRepoClient {
 // Start 开始分析
 func (c *BkRepoClient) Start(ctx context.Context, cancel context.CancelFunc) (*object.ToolInput, error) {
 	if c.ToolInput == nil {
+		stop := util.StartTimer(ctx, "initTime")
 		if err := c.initToolInput(); err != nil {
 			return nil, err
 		}
@@ -77,6 +79,7 @@ func (c *BkRepoClient) Start(ctx context.Context, cancel context.CancelFunc) (*o
 			}
 			util.Info("update subtask status success")
 		}
+		stop()
 	}
 	return c.ToolInput, nil
 }
@@ -120,9 +123,10 @@ func (c *BkRepoClient) Finish(cancel context.CancelFunc, toolOutput *object.Tool
 	c.ToolInput = nil
 }
 
-func (c *BkRepoClient) Failed(cancel context.CancelFunc, err error) {
+// Failed 分析失败，上报结果
+func (c *BkRepoClient) Failed(metrics map[string]any, cancel context.CancelFunc, err error) {
 	util.Error("analyze failed %s", err)
-	output := object.NewFailedOutput(err)
+	output := object.NewFailedOutput(err, metrics)
 	c.Finish(cancel, output)
 }
 
@@ -162,7 +166,8 @@ func (c *BkRepoClient) createDownloader() (util.Downloader, error) {
 
 // updateSubtaskStatus 更新任务状态为执行中
 func (c *BkRepoClient) updateSubtaskStatus() error {
-	reqUrl := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" + c.ToolInput.TaskId + "/status?token=" + c.Args.Token + "&status=EXECUTING"
+	reqUrl := c.Args.Url + analystTemporaryPrefix + "/scan/subtask/" +
+		c.ToolInput.TaskId + "/status?token=" + c.Args.Token + "&status=EXECUTING"
 	request, err := retryablehttp.NewRequest("PUT", reqUrl, nil)
 	if err != nil {
 		return err
