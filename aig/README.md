@@ -83,8 +83,14 @@ AIG 的 `resultUpdate` 事件包装层（线上抓包确认），真正的扫描
   - `high` → `high`
   - `medium` / `suspicious` / `warning` → `medium`
   - `low` / `info` / 其他 → `low`
-- `Des` = `description`（缺省时为 `suggestion`，皆缺省时使用默认占位文本）；当 `description` 与 `suggestion` 都存在，会以 `<description> (suggestion: <s>)` 拼接
-- `Path` / `PkgName` 直接取上传的压缩包名 `fileName`（mcp_scan 插件不会输出 issue 级文件路径）
+- `Des` = 从 `description` 中按 `### 技术分析` / `### 攻击路径` / `### 影响评估` 三段提取并拼接的子集（保留 `###` 标题、按文档原序、章节间空行分隔，统一剥离每行公共的前导缩进）；
+  - 任意目标章节都解析不到时回退到原始 `description`，避免在文档格式变更后丢信息
+  - `description` 为空时使用默认占位文本（与 `suggestion` 是否为空无关）
+- `Solution` = `suggestion` 剥离开头的 `## 修复建议` 二级标题前缀、剥离正文公共前导缩进并 trim 后的结果，缺省时为空字符串，不强制占位
+- `Path` = `description` 中 `**文件位置**` 行去掉 `/app/agent-scan/uploads/tmp-<id>/` 前缀后的相对路径（如 `skill-vul-test/SKILL.md`）；
+  - `description` 中找不到 `**文件位置**` 时回退到上传的压缩包名 `fileName`
+  - 兼容半角/全角冒号与前导空格
+- `PkgName` = 上传的压缩包名 `fileName`（不随 `Path` 变化）
 - 任务级元信息（`score` / `llm` / `language` / `readme` / 用时）不会塞进单条 `SecurityResult`，
   而是在 executor 层以 `Info` 日志输出，便于排查"为什么 issue=0 但 score≠100"等情况
 
