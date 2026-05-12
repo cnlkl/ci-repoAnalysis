@@ -33,10 +33,11 @@ const (
 
 // AIG 任务状态枚举。
 const (
-	TaskStatusPending   = "pending"
-	TaskStatusRunning   = "running"
-	TaskStatusCompleted = "completed"
-	TaskStatusFailed    = "failed"
+	TaskStatusPending    = "todo"
+	TaskStatusRunning    = "doing"
+	TaskStatusCompleted  = "done"
+	TaskStatusFailed     = "error"
+	TaskStatusTerminated = "terminated"
 )
 
 // 默认超时与重试相关配置。

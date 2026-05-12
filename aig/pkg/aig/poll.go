@@ -90,7 +90,7 @@ func (c *Client) WaitForResult(ctx context.Context, sessionID string) (*ResultDa
 		case TaskStatusCompleted:
 			util.Info("task[%s] completed, fetching result", sessionID)
 			return c.QueryResult(pollCtx, sessionID)
-		case TaskStatusFailed:
+		case TaskStatusFailed, TaskStatusTerminated:
 			logSnippet := truncateLog(stat.Log, 1024)
 			if logSnippet == "" {
 				logSnippet = "no log provided"
