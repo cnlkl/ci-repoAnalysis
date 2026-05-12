@@ -10,10 +10,11 @@ import (
 
 // ClientOptions 用于在创建 Client 时覆盖默认配置。
 //
-// 所有字段均为可选：字段为零值（空字符串 / 0 / 负数）时使用默认值；
-// 字段显式给出非零值时优先使用调用方传入值。
+// 大部分字段为可选（零值会回退到 Default* 常量）；唯一例外是 BaseURL，
+// 必填且无默认值兜底——见下方字段注释。
 type ClientOptions struct {
-	// BaseURL 覆盖 AIG 接入地址。优先级：调用方传入 > defaultBaseURL
+	// BaseURL 是 AIG 服务的接入地址。**必填**，由调用方明确传入；
+	// 末尾斜杠会在 NewClientWithOptions 中被裁掉，调用方不必关心。
 	BaseURL string
 
 	// UploadTimeout 控制单次上传请求的整体超时（含网络与等待响应）。
@@ -41,22 +42,26 @@ type ClientOptions struct {
 	Thread int
 }
 
-// NewClient 使用最简配置创建一个 AIG 客户端，全部使用默认值。
+// NewClient 使用最简配置创建一个 AIG 客户端，所有可选字段都走默认值。
 //
-// 注意：此构造方法**不会**填充 ModelConfig，调用者应在拿到客户端后再
-// 设置 Client.Model；若要直接传入 model，请使用 NewClientWithOptions。
+// **仅供单测/内部脚手架使用**：BaseURL 与 Model 都不会被填充，直接拿来
+// 调用 server 一定会失败。生产路径应当走 NewClientWithOptions（并由
+// 调用方保证 BaseURL 非空），单测可在拿到客户端后再手工 set BaseURL /
+// HTTPClient（参考 newTestClient）。
 func NewClient() *Client {
 	return NewClientWithOptions(ClientOptions{})
 }
 
-// NewClientWithOptions 使用给定的可选配置创建 AIG 客户端。
+// NewClientWithOptions 使用给定的配置创建 AIG 客户端。
 //
-// 所有 opts 中未设置（零值）的字段都会回退到默认值，实现「未配置时使用默认值」的语义。
+// 行为约定：
+//   - BaseURL **必填**，本构造器不做默认值兜底；如果调用方传入空字符串，
+//     这里会原样保留为 ""，让 executor 层的早期校验或后续的 HTTP 请求
+//     立刻报错（构造器保持薄、不返回 error，避免改函数签名带来的连锁修改）。
+//   - 末尾斜杠会被裁掉，方便 url 拼接。
+//   - 其余字段为零值时回退到对应的 Default* 常量。
 func NewClientWithOptions(opts ClientOptions) *Client {
 	baseURL := strings.TrimRight(opts.BaseURL, "/")
-	if baseURL == "" {
-		baseURL = defaultBaseURL
-	}
 
 	uploadTimeout := opts.UploadTimeout
 	if uploadTimeout <= 0 {

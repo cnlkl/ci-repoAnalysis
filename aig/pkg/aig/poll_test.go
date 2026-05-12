@@ -19,7 +19,7 @@ func TestQueryStatus_Success(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(w,
-			`{"status":0,"message":"ok","data":{"session_id":"sess-1","status":"running","title":"mcp scan","log":"abc"}}`)
+			`{"status":0,"message":"ok","data":{"session_id":"sess-1","status":"doing","title":"mcp scan","log":"abc"}}`)
 	}))
 	defer server.Close()
 
@@ -112,10 +112,10 @@ func TestWaitForResult_PollUntilCompleted(t *testing.T) {
 			n := atomic.AddInt32(&statusCalls, 1)
 			w.WriteHeader(http.StatusOK)
 			if n < 3 {
-				_, _ = io.WriteString(w, `{"status":0,"message":"ok","data":{"session_id":"h","status":"running"}}`)
+				_, _ = io.WriteString(w, `{"status":0,"message":"ok","data":{"session_id":"h","status":"doing"}}`)
 				return
 			}
-			_, _ = io.WriteString(w, `{"status":0,"message":"ok","data":{"session_id":"h","status":"completed"}}`)
+			_, _ = io.WriteString(w, `{"status":0,"message":"ok","data":{"session_id":"h","status":"done"}}`)
 		case strings.HasPrefix(r.URL.Path, "/api/v1/app/taskapi/result/"):
 			w.WriteHeader(http.StatusOK)
 			_, _ = io.WriteString(w,
@@ -146,7 +146,7 @@ func TestWaitForResult_FailedStatus(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(w,
-			`{"status":0,"message":"ok","data":{"session_id":"h","status":"failed","log":"engine crashed"}}`)
+			`{"status":0,"message":"ok","data":{"session_id":"h","status":"error","log":"engine crashed"}}`)
 	}))
 	defer server.Close()
 
@@ -164,7 +164,7 @@ func TestWaitForResult_FailedNoLog(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(w,
-			`{"status":0,"message":"ok","data":{"session_id":"h","status":"failed"}}`)
+			`{"status":0,"message":"ok","data":{"session_id":"h","status":"error"}}`)
 	}))
 	defer server.Close()
 
@@ -201,7 +201,7 @@ func TestWaitForResult_RetryThenExhaust(t *testing.T) {
 func TestWaitForResult_ContextCanceled(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = io.WriteString(w, `{"status":0,"message":"ok","data":{"session_id":"h","status":"running"}}`)
+		_, _ = io.WriteString(w, `{"status":0,"message":"ok","data":{"session_id":"h","status":"doing"}}`)
 	}))
 	defer server.Close()
 

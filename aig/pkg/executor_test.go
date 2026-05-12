@@ -1,6 +1,8 @@
 package pkg
 
 import (
+	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -81,6 +83,69 @@ func TestBuildClientOptions_ModelBaseURLNoDefault(t *testing.T) {
 	opts := buildClientOptions(cfg)
 	if opts.Model.BaseURL != "" {
 		t.Errorf("expected Model.BaseURL to stay empty (no default fallback), got %q", opts.Model.BaseURL)
+	}
+}
+
+// TestBuildClientOptions_AigBaseURLNoDefault 锁定 AIG 接入地址的"无默认值"契约：
+// 调用方未传 baseUrl → opts.BaseURL 严格保留为空字符串，
+// 由 Execute 入口的早期校验拦截（参考 TestExecute_RejectsMissingAigBaseUrl）。
+func TestBuildClientOptions_AigBaseURLNoDefault(t *testing.T) {
+	cfg := &sdkObject.ToolConfig{
+		Args: []sdkObject.Argument{
+			{Type: "STRING", Key: ArgKeyModelName, Value: "gpt-4"},
+			{Type: "STRING", Key: ArgKeyModelToken, Value: "sk-x"},
+			{Type: "STRING", Key: ArgKeyModelBaseURL, Value: "https://api"},
+			// 故意不传 ArgKeyBaseURL
+		},
+	}
+	opts := buildClientOptions(cfg)
+	if opts.BaseURL != "" {
+		t.Errorf("expected opts.BaseURL to stay empty (no default fallback), got %q", opts.BaseURL)
+	}
+}
+
+// TestExecute_RejectsMissingAigBaseUrl 锁定 Execute 入口的早期校验：
+// 当调用方提供了所有 model 凭据但漏配 baseUrl 时，Execute 应当立刻
+// 返回 missing required tool argument "baseUrl"，不会触发任何上传/HTTP 调用。
+func TestExecute_RejectsMissingAigBaseUrl(t *testing.T) {
+	cfg := &sdkObject.ToolConfig{
+		Args: []sdkObject.Argument{
+			{Type: "STRING", Key: ArgKeyModelName, Value: "gpt-4"},
+			{Type: "STRING", Key: ArgKeyModelToken, Value: "sk-x"},
+			{Type: "STRING", Key: ArgKeyModelBaseURL, Value: "https://api"},
+			// 故意不传 ArgKeyBaseURL
+		},
+	}
+	// file 传 nil 没关系：baseUrl 校验在 file 校验之前。
+	_, err := AigExecutor{}.Execute(context.Background(), cfg, nil)
+	if err == nil {
+		t.Fatal("expected error for missing baseUrl, got nil")
+	}
+	if !strings.Contains(err.Error(), `"`+ArgKeyBaseURL+`"`) {
+		t.Errorf("expected error to mention %q arg key, got: %v", ArgKeyBaseURL, err)
+	}
+	if !strings.Contains(err.Error(), "missing required tool argument") {
+		t.Errorf("expected canonical missing-arg phrasing, got: %v", err)
+	}
+}
+
+// TestExecute_RejectsMissingModelBaseUrl 与上一条对称：保证此前的 modelBaseUrl
+// 校验不会被 baseUrl 校验顺序的调整破坏。
+func TestExecute_RejectsMissingModelBaseUrl(t *testing.T) {
+	cfg := &sdkObject.ToolConfig{
+		Args: []sdkObject.Argument{
+			{Type: "STRING", Key: ArgKeyModelName, Value: "gpt-4"},
+			{Type: "STRING", Key: ArgKeyModelToken, Value: "sk-x"},
+			{Type: "STRING", Key: ArgKeyBaseURL, Value: "https://aig.test"},
+			// 故意不传 ArgKeyModelBaseURL
+		},
+	}
+	_, err := AigExecutor{}.Execute(context.Background(), cfg, nil)
+	if err == nil {
+		t.Fatal("expected error for missing modelBaseUrl, got nil")
+	}
+	if !strings.Contains(err.Error(), `"`+ArgKeyModelBaseURL+`"`) {
+		t.Errorf("expected error to mention %q arg key, got: %v", ArgKeyModelBaseURL, err)
 	}
 }
 

@@ -10,9 +10,8 @@ import (
 )
 
 // AIG 接口路径与字段常量。
+// 调用方必须在 ClientOptions.BaseURL 中明确传入完整 URL
 const (
-	defaultBaseURL = "http://localhost:8088"
-
 	uploadPath    = "/api/v1/app/taskapi/upload"
 	taskPath      = "/api/v1/app/taskapi/tasks"
 	statusPathFmt = "/api/v1/app/taskapi/status/%s"

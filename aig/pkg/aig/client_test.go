@@ -7,8 +7,10 @@ import (
 
 func TestNewClientWithOptions_Defaults(t *testing.T) {
 	c := NewClient()
-	if c.BaseURL != defaultBaseURL {
-		t.Errorf("BaseURL = %q, want %q", c.BaseURL, defaultBaseURL)
+	// BaseURL 没有默认值兜底：调用方未传入 → 严格保留为空字符串，
+	// 让上游早一步在 executor 层拦截，避免 silent failure。
+	if c.BaseURL != "" {
+		t.Errorf("BaseURL = %q, want empty string (no default fallback)", c.BaseURL)
 	}
 	if c.HTTPClient.Timeout != DefaultUploadTimeout {
 		t.Errorf("Timeout = %s, want %s", c.HTTPClient.Timeout, DefaultUploadTimeout)
@@ -81,8 +83,9 @@ func TestNewClientWithOptions_NegativeAndZeroFallback(t *testing.T) {
 		MaxRetries:    -3,
 		Thread:        -2,
 	})
-	if c.BaseURL != defaultBaseURL {
-		t.Errorf("BaseURL fallback failed: %q", c.BaseURL)
+	// BaseURL 不再有 default fallback；空字符串原样保留。
+	if c.BaseURL != "" {
+		t.Errorf("BaseURL should stay empty (no default fallback), got %q", c.BaseURL)
 	}
 	if c.HTTPClient.Timeout != DefaultUploadTimeout {
 		t.Errorf("UploadTimeout fallback failed: %s", c.HTTPClient.Timeout)
@@ -98,6 +101,26 @@ func TestNewClientWithOptions_NegativeAndZeroFallback(t *testing.T) {
 	}
 	if c.Thread != DefaultThread {
 		t.Errorf("Thread fallback failed: %d", c.Thread)
+	}
+}
+
+// TestNewClientWithOptions_TrimsTrailingSlash 锁定行为：构造器会去掉 BaseURL
+// 末尾的斜杠，便于后续 url 拼接（c.BaseURL + "/api/..."）。
+func TestNewClientWithOptions_TrimsTrailingSlash(t *testing.T) {
+	cases := map[string]string{
+		"https://aig.example.com/":      "https://aig.example.com",
+		"https://aig.example.com":       "https://aig.example.com",
+		"https://aig.example.com:8088/": "https://aig.example.com:8088",
+		"http://localhost:8088///":      "http://localhost:8088",
+		"":                              "", // 空仍然是空，不做任何兜底
+	}
+	for in, want := range cases {
+		t.Run(in, func(t *testing.T) {
+			c := NewClientWithOptions(ClientOptions{BaseURL: in})
+			if c.BaseURL != want {
+				t.Errorf("BaseURL = %q, want %q", c.BaseURL, want)
+			}
+		})
 	}
 }
 

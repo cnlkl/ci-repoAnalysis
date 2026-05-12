@@ -19,7 +19,7 @@
 | `modelName`             | STRING  | 是   | -                       | LLM 模型名（如 `gpt-4`、`deepseek-chat`、`kimi-k2.5`） |
 | `modelToken`            | STRING  | 是   | -                       | LLM API key                                       |
 | `modelBaseUrl`          | STRING  | 是   | -                       | LLM API base URL，**无默认值，必须由调用方明确提供**（不同部署方使用的 endpoint 完全不同：自家网关 / 第三方代理 / OpenAI / DeepSeek / Kimi …） |
-| `baseUrl`               | STRING  | 否   | `http://localhost:8088` | AIG 服务地址                                      |
+| `baseUrl`               | STRING  | 是   | -                       | AIG 服务接入地址，**无默认值，必须由调用方明确提供**（不同环境的 AIG 接入地址完全不同：本地 8088 / 公司内网 / SaaS / 自建网关 …） |
 | `prompt`                | STRING  | 否   | -                       | 附加的扫描提示词                                  |
 | `language`              | STRING  | 否   | `zh`                    | AIG 输出语言（`zh` / `en`）                       |
 | `thread`                | NUMBER  | 否   | `4`                     | AIG 后端并发线程数                                |
@@ -111,5 +111,7 @@ docker build -t bkrepo-aig:0.0.1 .
 - **支持文件后缀**：`zip`
 - **支持包类型**：`GENERIC`
 - **支持扫描类型**：`SECURITY`
-- **必填参数**：`modelName`、`modelToken`、`modelBaseUrl`（三者缺一即在客户端被拦截，报 `missing required model fields: model/token/base_url must all be non-empty`）
+- **必填参数**：`baseUrl`、`modelName`、`modelToken`、`modelBaseUrl`
+  - 缺 `baseUrl` / `modelName` / `modelToken` / `modelBaseUrl` 任一项，Execute 入口立刻返回 `missing required tool argument "<key>"`，不会触发任何上传/HTTP 调用
+  - 即便绕过 Execute 直接构造 `aig.Client`，task 创建阶段也会被 `ErrMissingModelCredentials`（`missing required model fields: model/token/base_url must all be non-empty`）拦截
 - **可选参数**：见上文「工具参数」表格

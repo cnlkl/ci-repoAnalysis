@@ -17,8 +17,13 @@ import (
 
 // 工具参数 key 常量。
 //
-// 必填项：modelName + modelToken + modelBaseUrl（mcp_scan 任务必须的 LLM 凭据，
-// 三者缺一即在客户端被 ErrMissingModelCredentials 拦截，不再有任何默认值兜底）。
+// 必填项：baseUrl + modelName + modelToken + modelBaseUrl
+//   - baseUrl       AIG 接入地址（不同环境完全不同：本地 8088 / 内网 / SaaS / 网关 …）
+//   - modelName     LLM 模型名
+//   - modelToken    LLM API key
+//   - modelBaseUrl  LLM API endpoint
+//
+// 四个 URL/凭据字段都不再有默认值兜底，缺一即在 Execute 入口被早期校验拦截。
 // 其余参数均为可选；未配置或为零值时使用 aig 包中的默认值。
 const (
 	ArgKeyBaseURL              = "baseUrl"
@@ -57,6 +62,7 @@ func (e AigExecutor) Execute(
 	modelName := config.GetStringArg(ArgKeyModelName)
 	modelToken := config.GetStringArg(ArgKeyModelToken)
 	modelBaseURL := config.GetStringArg(ArgKeyModelBaseURL)
+	aigBaseURL := config.GetStringArg(ArgKeyBaseURL)
 	if modelName == "" {
 		return nil, fmt.Errorf("missing required tool argument %q", ArgKeyModelName)
 	}
@@ -66,8 +72,11 @@ func (e AigExecutor) Execute(
 	if modelBaseURL == "" {
 		return nil, fmt.Errorf("missing required tool argument %q", ArgKeyModelBaseURL)
 	}
-	sdkUtil.Info("aig mcp scan started, model=%s, token=%s, baseUrl=%s",
-		modelName, localUtil.MaskSecret(modelToken), modelBaseURL)
+	if aigBaseURL == "" {
+		return nil, fmt.Errorf("missing required tool argument %q", ArgKeyBaseURL)
+	}
+	sdkUtil.Info("aig mcp scan started, model=%s, token=%s, modelBaseUrl=%s, aigBaseUrl=%s",
+		modelName, localUtil.MaskSecret(modelToken), modelBaseURL, aigBaseURL)
 
 	// 2. 校验文件
 	if file == nil {
@@ -130,7 +139,7 @@ func (e AigExecutor) Execute(
 // buildClientOptions 从 ToolConfig 中读取可选参数，转换为 aig.ClientOptions。
 //
 // 参数读取表：
-//   - baseUrl              (STRING)：覆盖 AIG 接入地址
+//   - baseUrl              (STRING, 必填)：AIG 接入地址（无默认值，必须明确指定）
 //   - modelName            (STRING, 必填)：LLM 模型名称
 //   - modelToken           (STRING, 必填)：LLM API 密钥
 //   - modelBaseUrl         (STRING, 必填)：LLM API base URL（无默认值，必须明确指定）
